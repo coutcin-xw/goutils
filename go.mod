@@ -1,4 +1,4 @@
-module github.com/coutcin-xw/go-nettools
+module github.com/coutcin-xw/goutils
 
 go 1.23.2
 
