@@ -2,14 +2,144 @@ package nettools
 
 import (
 	"bytes"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
 )
+
+func NewRequestOptions() *RequestOptions {
+	return &RequestOptions{
+		Method:    "GET",
+		Verify:    false,
+		Params:    make(map[string]interface{}),
+		Data:      make(map[string]interface{}),
+		CertPaths: []string{},
+		Proxies:   make(map[string]string),
+		Headers:   make(map[string]string),
+	}
+}
+
+func Request(opts *RequestOptions) (*http.Response, error) {
+	// Process URL and query parameters
+	urlStr := opts.URL
+	if len(opts.Params) > 0 {
+		query := url.Values{}
+		for key, value := range opts.Params {
+			query.Add(key, value.(string))
+		}
+		if strings.Contains(urlStr, "?") {
+			urlStr += "&" + query.Encode()
+		} else {
+			urlStr += "?" + query.Encode()
+		}
+	}
+
+	// Create HTTP client with optional proxy and TLS configurations
+	transport := &http.Transport{}
+
+	if len(opts.CertPaths) == 2 {
+		// Load custom certificates
+		cert, err := tls.LoadX509KeyPair(opts.CertPaths[0], opts.CertPaths[1])
+		if err != nil {
+			return nil, err
+		}
+		transport.TLSClientConfig = &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: !opts.Verify,
+		}
+	} else if !opts.Verify {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
+	// Configure proxy settings
+	if opts.Proxies != nil {
+		if proxyURL, ok := opts.Proxies["http"]; ok {
+			proxy, err := url.Parse(proxyURL)
+			if err != nil {
+				return nil, err
+			}
+			transport.Proxy = http.ProxyURL(proxy)
+		} else if proxyURL, ok := opts.Proxies["https"]; ok {
+			proxy, err := url.Parse(proxyURL)
+			if err != nil {
+				return nil, err
+			}
+			transport.Proxy = http.ProxyURL(proxy)
+		} else if proxyURL, ok := opts.Proxies["socks5"]; ok {
+			proxy, err := url.Parse(proxyURL)
+			if err != nil {
+				return nil, err
+			}
+			transport.Proxy = http.ProxyURL(proxy)
+		}
+	}
+
+	client := &http.Client{Transport: transport}
+
+	// Prepare request body
+	var body io.Reader
+	contentType := "application/json"
+
+	if opts.Files != nil && opts.Files.File != nil {
+		// Multipart form for file upload
+		buffer := &bytes.Buffer{}
+		writer := multipart.NewWriter(buffer)
+
+		// Add file part
+		fileWriter, err := writer.CreateFormFile("file", opts.Files.FileName)
+		if err != nil {
+			return nil, err
+		}
+		if _, err = io.Copy(fileWriter, opts.Files.File); err != nil {
+			return nil, err
+		}
+
+		// Add additional data
+		for key, value := range opts.Data {
+			_ = writer.WriteField(key, value.(string))
+		}
+
+		writer.Close()
+		body = buffer
+		contentType = writer.FormDataContentType()
+	} else if opts.Data != nil {
+		// JSON payload
+		jsonData, err := json.Marshal(opts.Data)
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewReader(jsonData)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest(strings.ToUpper(opts.Method), urlStr, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", contentType)
+
+	// Add custom headers
+	for key, value := range opts.Headers {
+		req.Header.Set(key, value)
+	}
+	// reqs, _ := ReadRequest(req, true)
+	// fmt.Print(string(reqs))
+	// Send the request
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
 
 func GetURIExtension(URI string) (string, error) {
 	tmpURI, err := RemoveQueryParams(URI)
@@ -58,20 +188,24 @@ func ReadRequest(req *http.Request, isCut bool) ([]byte, error) {
 	if req.Body != nil {
 		// 创建一个 TeeReader 复制数据
 		tee := io.TeeReader(req.Body, &bodyCopy)
-		// 重新设置请求体，确保后续逻辑能继续使用
-		req.Body = io.NopCloser(&bodyCopy)
 
 		// 根据需要逐块读取请求体（避免内存占用过高）
 		chunkSize := 8192
 		buf := make([]byte, chunkSize)
 		var totalRead int
+		var isRead int = 1
 		for {
 			n, err := tee.Read(buf)
 			if n > 0 {
 				totalRead += n
 				if isCut && totalRead > 100 {
-					body.Write(buf[:100-totalRead+n]) // 只截断到 100 字节
-					break
+					if isRead >= 1 {
+						body.Write(buf[:100-totalRead+n]) // 只截断到 100 字节
+						isRead--
+					} else {
+						continue
+					}
+
 				} else {
 					body.Write(buf[:n])
 				}
@@ -83,6 +217,8 @@ func ReadRequest(req *http.Request, isCut bool) ([]byte, error) {
 				return nil, fmt.Errorf("failed to read request body: %v", err)
 			}
 		}
+		// 重新设置请求体，确保后续逻辑能继续使用
+		req.Body = io.NopCloser(&bodyCopy)
 		// 将读取的请求体内容放到缓冲区
 		if body.Len() > 0 {
 			requestDetails.WriteString(fmt.Sprintf("\r\n%s", body.String()))
@@ -117,19 +253,23 @@ func ReadResponse(resp *http.Response, isCut bool) ([]byte, error) {
 	if resp.Body != nil {
 		// 创建一个 TeeReader 复制数据
 		tee := io.TeeReader(resp.Body, &bodyCopy)
-		// 重新设置响应体，确保后续逻辑能继续使用
-		resp.Body = io.NopCloser(&bodyCopy)
+
 		// 根据需要逐块读取（避免内存占用过高）
 		chunkSize := 8192
 		buf := make([]byte, chunkSize)
 		var totalRead int
+		var isRead int = 1
 		for {
 			n, err := tee.Read(buf)
 			if n > 0 {
 				totalRead += n
 				if isCut && totalRead > 100 {
-					body.Write(buf[:100-totalRead+n]) // 只截断到 100 字节
-					break
+					if isRead >= 1 {
+						body.Write(buf[:100-totalRead+n]) // 只截断到 100 字节
+						isRead--
+					} else {
+						continue
+					}
 				} else {
 					body.Write(buf[:n])
 				}
@@ -141,7 +281,10 @@ func ReadResponse(resp *http.Response, isCut bool) ([]byte, error) {
 
 				return nil, fmt.Errorf("failed to read response body: %v", err)
 			}
+
 		}
+		// 重新设置响应体，确保后续逻辑能继续使用
+		resp.Body = io.NopCloser(&bodyCopy)
 		// 将读取的响应体内容放到缓冲区
 		if body.Len() > 0 {
 			responseDetails.WriteString(fmt.Sprintf("\r\n%s", body.String()))
