@@ -2,144 +2,14 @@ package nettools
 
 import (
 	"bytes"
-	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
 )
-
-func NewRequestOptions() *RequestOptions {
-	return &RequestOptions{
-		Method:    "GET",
-		Verify:    false,
-		Params:    make(map[string]interface{}),
-		Data:      make(map[string]interface{}),
-		CertPaths: []string{},
-		Proxies:   make(map[string]string),
-		Headers:   make(map[string]string),
-	}
-}
-
-func Request(opts *RequestOptions) (*http.Response, error) {
-	// Process URL and query parameters
-	urlStr := opts.URL
-	if len(opts.Params) > 0 {
-		query := url.Values{}
-		for key, value := range opts.Params {
-			query.Add(key, value.(string))
-		}
-		if strings.Contains(urlStr, "?") {
-			urlStr += "&" + query.Encode()
-		} else {
-			urlStr += "?" + query.Encode()
-		}
-	}
-
-	// Create HTTP client with optional proxy and TLS configurations
-	transport := &http.Transport{}
-
-	if len(opts.CertPaths) == 2 {
-		// Load custom certificates
-		cert, err := tls.LoadX509KeyPair(opts.CertPaths[0], opts.CertPaths[1])
-		if err != nil {
-			return nil, err
-		}
-		transport.TLSClientConfig = &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: !opts.Verify,
-		}
-	} else if !opts.Verify {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-
-	// Configure proxy settings
-	if opts.Proxies != nil {
-		if proxyURL, ok := opts.Proxies["http"]; ok {
-			proxy, err := url.Parse(proxyURL)
-			if err != nil {
-				return nil, err
-			}
-			transport.Proxy = http.ProxyURL(proxy)
-		} else if proxyURL, ok := opts.Proxies["https"]; ok {
-			proxy, err := url.Parse(proxyURL)
-			if err != nil {
-				return nil, err
-			}
-			transport.Proxy = http.ProxyURL(proxy)
-		} else if proxyURL, ok := opts.Proxies["socks5"]; ok {
-			proxy, err := url.Parse(proxyURL)
-			if err != nil {
-				return nil, err
-			}
-			transport.Proxy = http.ProxyURL(proxy)
-		}
-	}
-
-	client := &http.Client{Transport: transport}
-
-	// Prepare request body
-	var body io.Reader
-	contentType := "application/json"
-
-	if opts.Files != nil && opts.Files.File != nil {
-		// Multipart form for file upload
-		buffer := &bytes.Buffer{}
-		writer := multipart.NewWriter(buffer)
-
-		// Add file part
-		fileWriter, err := writer.CreateFormFile("file", opts.Files.FileName)
-		if err != nil {
-			return nil, err
-		}
-		if _, err = io.Copy(fileWriter, opts.Files.File); err != nil {
-			return nil, err
-		}
-
-		// Add additional data
-		for key, value := range opts.Data {
-			_ = writer.WriteField(key, value.(string))
-		}
-
-		writer.Close()
-		body = buffer
-		contentType = writer.FormDataContentType()
-	} else if opts.Data != nil {
-		// JSON payload
-		jsonData, err := json.Marshal(opts.Data)
-		if err != nil {
-			return nil, err
-		}
-		body = bytes.NewReader(jsonData)
-	}
-
-	// Create HTTP request
-	req, err := http.NewRequest(strings.ToUpper(opts.Method), urlStr, body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", contentType)
-
-	// Add custom headers
-	for key, value := range opts.Headers {
-		req.Header.Set(key, value)
-	}
-	// reqs, _ := ReadRequest(req, true)
-	// fmt.Print(string(reqs))
-	// Send the request
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
-}
 
 func GetURIExtension(URI string) (string, error) {
 	tmpURI, err := RemoveQueryParams(URI)
@@ -172,9 +42,13 @@ func ReadRequest(req *http.Request, isCut bool) ([]byte, error) {
 	var requestDetails bytes.Buffer
 	var bodyCopy bytes.Buffer
 	var body bytes.Buffer
-
+	// 修复1: 包含完整的URL路径和参数
+	urlPart := req.URL.Path
+	if req.URL.RawQuery != "" {
+		urlPart += "?" + req.URL.RawQuery
+	}
 	// 打印请求方法和 URL
-	requestDetails.WriteString(fmt.Sprintf("%s %s %s\r\n", req.Method, req.URL.Path, req.Proto))
+	requestDetails.WriteString(fmt.Sprintf("%s %s %s\r\n", req.Method, urlPart, req.Proto))
 
 	req.Header.Add("Host", req.URL.Host)
 	// 打印请求头
