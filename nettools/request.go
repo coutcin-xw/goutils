@@ -269,9 +269,15 @@ func (r *Req) configureClient() error {
 	}
 	transport.TLSClientConfig.InsecureSkipVerify = !r.Verify
 
-	// 加载证书
+	// 在证书配置部分修改为：
 	if len(r.CertPaths) > 0 {
-		pool := x509.NewCertPool()
+		// 使用系统证书池作为基础
+		pool, err := x509.SystemCertPool()
+		if err != nil || pool == nil {
+			pool = x509.NewCertPool()
+		}
+
+		// 添加自定义证书
 		for _, path := range r.CertPaths {
 			cert, err := os.ReadFile(path)
 			if err != nil {
@@ -282,6 +288,9 @@ func (r *Req) configureClient() error {
 			}
 		}
 		transport.TLSClientConfig.RootCAs = pool
+	} else {
+		// 当不添加证书时保持系统默认
+		transport.TLSClientConfig.RootCAs = nil
 	}
 
 	// 配置代理
