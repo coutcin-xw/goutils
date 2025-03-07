@@ -233,3 +233,120 @@ func IsIPInCIDR(ip string, cidr string) bool {
 	parsedIP := net.ParseIP(ip)
 	return ipNet.Contains(parsedIP)
 }
+
+type InterfaceIpInfo struct {
+	ifaceName   string
+	ifaceIpNets []net.IPNet
+}
+
+func GetIpv6Global() ([]InterfaceIpInfo, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching interfaces: %v", err)
+	}
+	var ifaceIpInfo []InterfaceIpInfo
+	for _, iface := range interfaces {
+		// 检查接口是否启用
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		var ifaceIpNets []net.IPNet
+		for _, addr := range addrs {
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			ip := ipNet.IP
+			if ip.IsLoopback() {
+				continue
+			}
+			if ip.To4() == nil && ip.To16() != nil && ip.IsGlobalUnicast() {
+				ifaceIpNets = append(ifaceIpNets, *ipNet)
+			}
+		}
+
+		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
+			ifaceName:   iface.Name,
+			ifaceIpNets: ifaceIpNets,
+		})
+	}
+	return ifaceIpInfo, nil
+}
+func GetIpv6() ([]InterfaceIpInfo, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching interfaces: %v", err)
+	}
+	var ifaceIpInfo []InterfaceIpInfo
+	for _, iface := range interfaces {
+		// 检查接口是否启用
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		var ifaceIpNets []net.IPNet
+		for _, addr := range addrs {
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			ip := ipNet.IP
+			if ip.To4() == nil && ip.To16() != nil {
+				ifaceIpNets = append(ifaceIpNets, *ipNet)
+			}
+		}
+
+		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
+			ifaceName:   iface.Name,
+			ifaceIpNets: ifaceIpNets,
+		})
+	}
+	return ifaceIpInfo, nil
+}
+func GetIpv4() ([]InterfaceIpInfo, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching interfaces: %v", err)
+	}
+	var ifaceIpInfo []InterfaceIpInfo
+	for _, iface := range interfaces {
+		// 检查接口是否启用
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		var ifaceIpNets []net.IPNet
+		for _, addr := range addrs {
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			ip := ipNet.IP
+			if ip.To4() != nil {
+				ifaceIpNets = append(ifaceIpNets, *ipNet)
+			}
+		}
+
+		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
+			ifaceName:   iface.Name,
+			ifaceIpNets: ifaceIpNets,
+		})
+	}
+	return ifaceIpInfo, nil
+}
