@@ -279,6 +279,7 @@ func GetIpv6Global() ([]InterfaceIpInfo, error) {
 
 		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
 			IfaceName:   iface.Name,
+			IfaceIsUp:   true,
 			IfaceIpNets: ifaceIpNets,
 		})
 	}
@@ -320,6 +321,7 @@ func GetIpv6() ([]InterfaceIpInfo, error) {
 
 		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
 			IfaceName:   iface.Name,
+			IfaceIsUp:   true,
 			IfaceIpNets: ifaceIpNets,
 		})
 	}
@@ -361,6 +363,7 @@ func GetIpv4() ([]InterfaceIpInfo, error) {
 
 		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
 			IfaceName:   iface.Name,
+			IfaceIsUp:   true,
 			IfaceIpNets: ifaceIpNets,
 		})
 	}
@@ -406,7 +409,7 @@ func GetInterFaceInfo(ifaceName string) (*InterfaceIpInfo, error) {
 		}
 		ifaceIpInfo = &InterfaceIpInfo{
 			IfaceName:   iface.Name,
-			IfaceIsUp:   false,
+			IfaceIsUp:   true,
 			IfaceIpNets: ifaceIpNets,
 		}
 		return ifaceIpInfo, nil
