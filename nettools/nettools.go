@@ -250,9 +250,9 @@ func GetIpv6Global() ([]InterfaceIpInfo, error) {
 		// 检查接口是否启用
 		if iface.Flags&net.FlagUp == 0 {
 			ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
-				ifaceName:   iface.Name,
-				ifaceIsUp:   false,
-				ifaceIpNets: nil,
+				IfaceName:   iface.Name,
+				IfaceIsUp:   false,
+				IfaceIpNets: nil,
 			})
 			continue
 		}
@@ -278,8 +278,8 @@ func GetIpv6Global() ([]InterfaceIpInfo, error) {
 		}
 
 		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
-			ifaceName:   iface.Name,
-			ifaceIpNets: ifaceIpNets,
+			IfaceName:   iface.Name,
+			IfaceIpNets: ifaceIpNets,
 		})
 	}
 	return ifaceIpInfo, nil
@@ -294,9 +294,9 @@ func GetIpv6() ([]InterfaceIpInfo, error) {
 		// 检查接口是否启用
 		if iface.Flags&net.FlagUp == 0 {
 			ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
-				ifaceName:   iface.Name,
-				ifaceIsUp:   false,
-				ifaceIpNets: nil,
+				IfaceName:   iface.Name,
+				IfaceIsUp:   false,
+				IfaceIpNets: nil,
 			})
 			continue
 		}
@@ -319,8 +319,8 @@ func GetIpv6() ([]InterfaceIpInfo, error) {
 		}
 
 		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
-			ifaceName:   iface.Name,
-			ifaceIpNets: ifaceIpNets,
+			IfaceName:   iface.Name,
+			IfaceIpNets: ifaceIpNets,
 		})
 	}
 	return ifaceIpInfo, nil
@@ -335,9 +335,9 @@ func GetIpv4() ([]InterfaceIpInfo, error) {
 		// 检查接口是否启用
 		if iface.Flags&net.FlagUp == 0 {
 			ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
-				ifaceName:   iface.Name,
-				ifaceIsUp:   false,
-				ifaceIpNets: nil,
+				IfaceName:   iface.Name,
+				IfaceIsUp:   false,
+				IfaceIpNets: nil,
 			})
 			continue
 		}
@@ -360,8 +360,8 @@ func GetIpv4() ([]InterfaceIpInfo, error) {
 		}
 
 		ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
-			ifaceName:   iface.Name,
-			ifaceIpNets: ifaceIpNets,
+			IfaceName:   iface.Name,
+			IfaceIpNets: ifaceIpNets,
 		})
 	}
 	return ifaceIpInfo, nil
@@ -380,9 +380,9 @@ func GetInterFaceInfo(ifaceName string) (*InterfaceIpInfo, error) {
 		// 检查接口是否启用
 		if iface.Flags&net.FlagUp == 0 {
 			ifaceIpInfo = &InterfaceIpInfo{
-				ifaceName:   iface.Name,
-				ifaceIsUp:   false,
-				ifaceIpNets: nil,
+				IfaceName:   iface.Name,
+				IfaceIsUp:   false,
+				IfaceIpNets: nil,
 			}
 			return ifaceIpInfo, nil
 		}
@@ -405,9 +405,9 @@ func GetInterFaceInfo(ifaceName string) (*InterfaceIpInfo, error) {
 			}
 		}
 		ifaceIpInfo = &InterfaceIpInfo{
-			ifaceName:   iface.Name,
-			ifaceIsUp:   false,
-			ifaceIpNets: ifaceIpNets,
+			IfaceName:   iface.Name,
+			IfaceIsUp:   false,
+			IfaceIpNets: ifaceIpNets,
 		}
 		return ifaceIpInfo, nil
 
