@@ -236,6 +236,7 @@ func IsIPInCIDR(ip string, cidr string) bool {
 
 type InterfaceIpInfo struct {
 	ifaceName   string
+	ifaceIsUp   bool
 	ifaceIpNets []net.IPNet
 }
 
@@ -248,6 +249,11 @@ func GetIpv6Global() ([]InterfaceIpInfo, error) {
 	for _, iface := range interfaces {
 		// 检查接口是否启用
 		if iface.Flags&net.FlagUp == 0 {
+			ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
+				ifaceName:   iface.Name,
+				ifaceIsUp:   false,
+				ifaceIpNets: nil,
+			})
 			continue
 		}
 
@@ -287,6 +293,11 @@ func GetIpv6() ([]InterfaceIpInfo, error) {
 	for _, iface := range interfaces {
 		// 检查接口是否启用
 		if iface.Flags&net.FlagUp == 0 {
+			ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
+				ifaceName:   iface.Name,
+				ifaceIsUp:   false,
+				ifaceIpNets: nil,
+			})
 			continue
 		}
 
@@ -323,6 +334,11 @@ func GetIpv4() ([]InterfaceIpInfo, error) {
 	for _, iface := range interfaces {
 		// 检查接口是否启用
 		if iface.Flags&net.FlagUp == 0 {
+			ifaceIpInfo = append(ifaceIpInfo, InterfaceIpInfo{
+				ifaceName:   iface.Name,
+				ifaceIsUp:   false,
+				ifaceIpNets: nil,
+			})
 			continue
 		}
 
@@ -349,4 +365,52 @@ func GetIpv4() ([]InterfaceIpInfo, error) {
 		})
 	}
 	return ifaceIpInfo, nil
+}
+
+func GetInterFaceInfo(ifaceName string) (*InterfaceIpInfo, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching interfaces: %v", err)
+	}
+	var ifaceIpInfo *InterfaceIpInfo
+	for _, iface := range interfaces {
+		if iface.Name != ifaceName {
+			continue
+		}
+		// 检查接口是否启用
+		if iface.Flags&net.FlagUp == 0 {
+			ifaceIpInfo = &InterfaceIpInfo{
+				ifaceName:   iface.Name,
+				ifaceIsUp:   false,
+				ifaceIpNets: nil,
+			}
+			return ifaceIpInfo, nil
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+
+			return nil, err
+		}
+		var ifaceIpNets []net.IPNet
+		for _, addr := range addrs {
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			ip := ipNet.IP
+			if ip.To4() != nil || ip.To16() != nil {
+				ifaceIpNets = append(ifaceIpNets, *ipNet)
+			}
+		}
+		ifaceIpInfo = &InterfaceIpInfo{
+			ifaceName:   iface.Name,
+			ifaceIsUp:   false,
+			ifaceIpNets: ifaceIpNets,
+		}
+		return ifaceIpInfo, nil
+
+	}
+	return nil, nil
 }
