@@ -235,9 +235,9 @@ func IsIPInCIDR(ip string, cidr string) bool {
 }
 
 type InterfaceIpInfo struct {
-	InsecureSkipVerifyfaceName string
-	IfaceIsUp                  bool
-	IfaceIpNets                []net.IPNet
+	IfaceName   string
+	IfaceIsUp   bool
+	IfaceIpNets []net.IPNet
 }
 
 func GetIpv6Global() ([]InterfaceIpInfo, error) {
