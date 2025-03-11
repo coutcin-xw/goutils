@@ -417,3 +417,56 @@ func GetInterFaceInfo(ifaceName string) (*InterfaceIpInfo, error) {
 	}
 	return nil, nil
 }
+
+func GetIfaceIpv4(ifaceName string) (*InterfaceIpInfo, error) {
+	info, err := GetInterFaceInfo(ifaceName)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IfaceIsUp || info == nil {
+		return info, nil
+	}
+	var ipv4 []net.IPNet
+	for _, x := range info.IfaceIpNets {
+		if x.IP.To4() != nil {
+			ipv4 = append(ipv4, x)
+		}
+	}
+	info.IfaceIpNets = ipv4
+	return info, nil
+
+}
+func GetIfaceIpv6(ifaceName string) (*InterfaceIpInfo, error) {
+	info, err := GetInterFaceInfo(ifaceName)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IfaceIsUp || info == nil {
+		return info, nil
+	}
+	var ipv6 []net.IPNet
+	for _, x := range info.IfaceIpNets {
+		if x.IP.To4() == nil && x.IP.To16() != nil {
+			ipv6 = append(ipv6, x)
+		}
+	}
+	info.IfaceIpNets = ipv6
+	return info, nil
+}
+func GetIfaceIpv6Global(ifaceName string) (*InterfaceIpInfo, error) {
+	info, err := GetInterFaceInfo(ifaceName)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IfaceIsUp || info == nil {
+		return info, nil
+	}
+	var ipv6 []net.IPNet
+	for _, x := range info.IfaceIpNets {
+		if x.IP.To4() == nil && x.IP.To16() != nil && x.IP.IsGlobalUnicast() {
+			ipv6 = append(ipv6, x)
+		}
+	}
+	info.IfaceIpNets = ipv6
+	return info, nil
+}
