@@ -436,6 +436,24 @@ func GetIfaceIpv4(ifaceName string) (*InterfaceIpInfo, error) {
 	return info, nil
 
 }
+func GetIfaceIpv4Global(ifaceName string) (*InterfaceIpInfo, error) {
+	info, err := GetInterFaceInfo(ifaceName)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IfaceIsUp || info == nil {
+		return info, nil
+	}
+	var ipv4 []net.IPNet
+	for _, x := range info.IfaceIpNets {
+		if x.IP.To4() != nil && x.IP.IsGlobalUnicast() {
+			ipv4 = append(ipv4, x)
+		}
+	}
+	info.IfaceIpNets = ipv4
+	return info, nil
+
+}
 func GetIfaceIpv6(ifaceName string) (*InterfaceIpInfo, error) {
 	info, err := GetInterFaceInfo(ifaceName)
 	if err != nil {
