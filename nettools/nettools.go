@@ -415,7 +415,7 @@ func GetInterFaceInfo(ifaceName string) (*InterfaceIpInfo, error) {
 		return ifaceIpInfo, nil
 
 	}
-	return nil, nil
+	return nil, fmt.Errorf("get inface info null")
 }
 
 func GetIfaceIpv4(ifaceName string) (*InterfaceIpInfo, error) {
